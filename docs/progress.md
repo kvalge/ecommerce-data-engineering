@@ -12,3 +12,4 @@
 ## Next
 
 - Store raw data in PostgreSQL (upsert products; append versions / close via `valid_until`).
+

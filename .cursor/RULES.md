@@ -49,6 +49,8 @@ The data model represents a typical e-commerce business, including products, use
 
 ## Data
 Ingests data from products API, using faker, generates fake data of users, orders, order_items.
-Users: id, first_name, last_name, email, telephone, age, gender (M, W or not defined; may), city (Tallinn, Tartu, Narva, Pärnu, Viljandi, Võru, Kuressaare või Jõhvi), registration_date
-Orders: id, user_id, order_date, status, payment_method, shipping_city (Tallinn, Tartu, Narva, Pärnu, või Jõhvi)
-Order_Items: id, order_id, product_id, quantity, unit_price
+Users, orders, and order_items use SCD Type 2 versioning: `id` (version PK), `entity_id` (stable business key), `valid_from`, `valid_until` (NULL = current). Old rows stay intact on change or soft-drop.
+Users: id, entity_id, first_name, last_name, email, telephone, age, gender (M, W or not defined; may), city (Tallinn, Tartu, Narva, Pärnu, Viljandi, Võru, Kuressaare või Jõhvi), registration_date, valid_from, valid_until
+Orders: id, entity_id, user_id (user entity_id), order_date, status, payment_method, shipping_city (Tallinn, Tartu, Narva, Pärnu, või Jõhvi), valid_from, valid_until
+Order_Items: id, entity_id, order_id (order entity_id), product_id, quantity, unit_price, valid_from, valid_until
+Simulation: `src/ingestion/simulate_batch.py` periodically creates, updates, and soft-drops rows to imitate real-life churn.

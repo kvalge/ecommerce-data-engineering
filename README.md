@@ -7,7 +7,7 @@ The project uses Python for data ingestion, PostgreSQL for data storage, dbt for
 The data model represents a typical e-commerce business, including products, users, orders, and order items. The final analytical layer will provide insights into sales performance, customer behavior, and product performance.
 
 ## Data
-Ingests data from products API, generates fake data of users, orders, order_items.
+Ingests data from products API (`src/ingestion/products.py`). Generates fake users (`src/ingestion/users.py`), orders (`src/ingestion/orders.py`), and order_items (`src/ingestion/order_items.py`).
 
 ## Setup
 pip install -r requirements.txt

@@ -13,15 +13,16 @@ Build an end-to-end e-commerce data pipeline: ingest products from an external A
   - Shared helpers in `src/ingestion/versioning.py`
 - Real-life batch simulation (`src/ingestion/simulate_batch.py`): each run mixes new users/orders/items, profile/status changes, and soft-drops (order drop cascades to its current items).
 - Local Postgres via Docker Compose (`docker-compose.yml`); DB placeholders in `.env.example`; local secrets in `.env` (gitignored).
+- Raw Postgres schema (`sql/raw_schema.sql`): schema `raw` with `products` (upsert catalog) and SCD2 tables `users`, `orders`, `order_items`; unique partial indexes enforce one current row per `entity_id`.
 
 ## Next steps
 
-Immediate next step: **2**.
+Immediate next step: **3**.
 
 ### PostgreSQL raw storage
 
 1. ~~Add Docker Compose for local Postgres; fill `.env.example` with DB placeholders; use `.env` for real credentials (never commit `.env`).~~
-2. Define raw schema for `products`, `users`, `orders`, `order_items` matching generated fields (including SCD2 columns where applicable).
+2. ~~Define raw schema for `products`, `users`, `orders`, `order_items` matching generated fields (including SCD2 columns where applicable).~~
 3. Add `src/storage/` with a DB connection helper (SQLAlchemy + psycopg2).
 4. Implement load functions: upsert products by `id`; for users/orders/order_items append new versions and close current rows via `valid_until` only.
 5. Wire a batch run to persist to Postgres (seed once, then `simulate_batch` writes to the DB).

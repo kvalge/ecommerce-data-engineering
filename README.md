@@ -16,6 +16,12 @@ docker compose up -d
 
 Copy `.env.example` to `.env` and adjust credentials if needed. Never commit `.env`. Postgres runs on the port set in `.env` (default `5432`).
 
+Raw tables are defined in `sql/raw_schema.sql` (schema `raw`: `products`, `users`, `orders`, `order_items`). On first Postgres start, Docker applies that file automatically. If the database volume already exists, apply it manually:
+
+```bash
+docker compose exec -T postgres psql -U ecommerce -d ecommerce < sql/raw_schema.sql
+```
+
 ## Data
 Ingests products from the FakeStore API (`src/ingestion/products.py`).
 

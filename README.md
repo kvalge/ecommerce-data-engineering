@@ -28,6 +28,12 @@ DB connection helper: `src/storage/db.py` (reads `.env`, SQLAlchemy + psycopg2).
 python src/storage/db.py
 ```
 
+Load into raw tables: `src/storage/load.py` (`upsert_products`, `load_users` / `load_orders` / `load_order_items`).
+
+```bash
+python src/storage/load.py
+```
+
 ## Data
 Ingests products from the FakeStore API (`src/ingestion/products.py`).
 

@@ -22,6 +22,12 @@ Raw tables are defined in `sql/raw_schema.sql` (schema `raw`: `products`, `users
 docker compose exec -T postgres psql -U ecommerce -d ecommerce < sql/raw_schema.sql
 ```
 
+DB connection helper: `src/storage/db.py` (reads `.env`, SQLAlchemy + psycopg2).
+
+```bash
+python src/storage/db.py
+```
+
 ## Data
 Ingests products from the FakeStore API (`src/ingestion/products.py`).
 

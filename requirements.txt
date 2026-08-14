@@ -1,6 +1,6 @@
-requests
-faker
-pandas
-sqlalchemy
-psycopg2-binary
-python-dotenv
+requests==2.34.2
+faker==40.35.0
+pandas==3.0.3
+sqlalchemy==2.0.51
+psycopg2-binary==2.9.12
+python-dotenv==1.2.2

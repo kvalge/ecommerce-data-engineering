@@ -1,15 +1,45 @@
 # Progress
 
+## Goal
+
+Build an end-to-end e-commerce data pipeline: ingest products from an external API and generate fake users/orders/order_items in Python, store raw data in PostgreSQL, transform it with dbt into analytical models, and orchestrate the workflow with Airflow (local services via Docker).
+
 ## Done
 
-- Products ingestion: fetch products from FakeStore API (`src/ingestion/products.py`).
-- Versioned fake data (SCD Type 2) for users, orders, order_items:
-  - `id` = version row PK; `entity_id` = stable business key; `valid_from` / `valid_until` (NULL = current)
-  - Helpers: create / change / drop in `users.py`, `orders.py`, `order_items.py`
+- Products ingestion from FakeStore API (`src/ingestion/products.py`).
+- Versioned fake data (SCD Type 2) for users, orders, and order_items:
+  - `id` = version row PK; `entity_id` = stable business key; `valid_from` / `valid_until` (`NULL` = current)
+  - Create / change / drop helpers in `src/ingestion/users.py`, `orders.py`, `order_items.py`
   - Shared helpers in `src/ingestion/versioning.py`
 - Real-life batch simulation (`src/ingestion/simulate_batch.py`): each run mixes new users/orders/items, profile/status changes, and soft-drops (order drop cascades to its current items).
+- Local Postgres via Docker Compose (`docker-compose.yml`); DB placeholders in `.env.example`; local secrets in `.env` (gitignored).
 
-## Next
+## Next steps
 
-- Store raw data in PostgreSQL (upsert products; append versions / close via `valid_until`).
+Immediate next step: **2**.
 
+### PostgreSQL raw storage
+
+1. ~~Add Docker Compose for local Postgres; fill `.env.example` with DB placeholders; use `.env` for real credentials (never commit `.env`).~~
+2. Define raw schema for `products`, `users`, `orders`, `order_items` matching generated fields (including SCD2 columns where applicable).
+3. Add `src/storage/` with a DB connection helper (SQLAlchemy + psycopg2).
+4. Implement load functions: upsert products by `id`; for users/orders/order_items append new versions and close current rows via `valid_until` only.
+5. Wire a batch run to persist to Postgres (seed once, then `simulate_batch` writes to the DB).
+6. Manually verify after two runs: current rows (`valid_until IS NULL`) vs historical versions look correct.
+
+### dbt transformation
+
+7. Initialize a dbt project and profile pointed at the same Postgres database.
+8. Add staging models and sources for the four raw tables.
+9. Add tests (`not_null`, `unique`, relationships) and enforce one current row per `entity_id` where applicable.
+10. Build marts: dimension tables (`dim_users`, `dim_products`) and fact tables (`fct_orders` / `fct_order_items`) with as-of SCD2 joins.
+11. Add analytical marts (sales, customer, product performance), `schema.yml` descriptions, and dbt docs.
+
+### Airflow orchestration
+
+12. Add Airflow via Docker Compose (share the stack with Postgres where practical).
+13. Create a DAG: ingest/simulate → load Postgres → `dbt run` → `dbt test`; add schedule and retries.
+
+### Docs polish
+
+14. Update `README.md` with end-to-end run instructions once the full stack works.

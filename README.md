@@ -6,6 +6,16 @@ The project uses Python for data ingestion, PostgreSQL for data storage, dbt for
 
 The data model represents a typical e-commerce business, including products, users, orders, and order items. The final analytical layer will provide insights into sales performance, customer behavior, and product performance.
 
+## Setup
+
+```bash
+pip install -r requirements.txt
+cp .env.example .env
+docker compose up -d
+```
+
+Copy `.env.example` to `.env` and adjust credentials if needed. Never commit `.env`. Postgres runs on the port set in `.env` (default `5432`).
+
 ## Data
 Ingests products from the FakeStore API (`src/ingestion/products.py`).
 
@@ -20,6 +30,3 @@ Each simulation run mixes creates, updates, and soft-drops via `src/ingestion/si
 ```bash
 python src/ingestion/simulate_batch.py
 ```
-
-## Setup
-pip install -r requirements.txt

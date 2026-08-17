@@ -61,7 +61,12 @@ docker compose --profile dbt run --rm dbt test --select staging
 docker compose --profile dbt run --rm dbt build --select intermediate
 ```
 
-Layering: `raw` → `staging` (`stg_*`) → `intermediate` (`dim_*` / `fct_*`) → `marts` (analytical, step 11).
+Layering: `raw` → `staging` (`stg_*`) → `intermediate` (`dim_*` / `fct_*`) → `marts` (`mart_sales`, `mart_customers`, `mart_products`).
+
+```bash
+docker compose --profile dbt run --rm dbt build --select marts
+docker compose --profile dbt run --rm dbt docs generate
+```
 
 ## Data
 Ingests products from the FakeStore API (`src/ingestion/products.py`).

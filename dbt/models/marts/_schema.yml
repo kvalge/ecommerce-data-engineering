@@ -1,0 +1,80 @@
+version: 2
+
+models:
+  - name: mart_sales
+    description: "{{ doc('mart_sales') }}"
+    columns:
+      - name: order_date
+        description: Date the order was placed.
+        data_tests:
+          - not_null
+      - name: shipping_city
+        description: City the order shipped to.
+        data_tests:
+          - not_null
+      - name: order_status
+        description: Current order status.
+        data_tests:
+          - not_null
+      - name: order_count
+        description: Distinct orders in this grain.
+        data_tests:
+          - not_null
+      - name: line_item_count
+        description: Number of order line rows.
+      - name: units_sold
+        description: Sum of item quantities.
+      - name: revenue
+        description: Sum of line_total.
+        data_tests:
+          - not_null
+
+  - name: mart_customers
+    description: "{{ doc('mart_customers') }}"
+    columns:
+      - name: user_id
+        description: Stable customer business key.
+        data_tests:
+          - not_null
+          - unique
+      - name: email
+        data_tests:
+          - not_null
+      - name: order_count
+        description: Number of current orders for this customer.
+        data_tests:
+          - not_null
+      - name: lifetime_revenue
+        description: Sum of line_total across the customer's orders.
+        data_tests:
+          - not_null
+      - name: first_order_date
+        description: Earliest order_date (null if no orders).
+      - name: last_order_date
+        description: Latest order_date (null if no orders).
+
+  - name: mart_products
+    description: "{{ doc('mart_products') }}"
+    columns:
+      - name: product_id
+        description: Product catalog id.
+        data_tests:
+          - not_null
+          - unique
+      - name: product_name
+        data_tests:
+          - not_null
+      - name: category
+        description: Product category from the API.
+      - name: order_count
+        description: Distinct orders that include this product.
+        data_tests:
+          - not_null
+      - name: units_sold
+        description: Total quantity sold.
+        data_tests:
+          - not_null
+      - name: revenue
+        description: Sum of line_total for this product.
+        data_tests:
+          - not_null

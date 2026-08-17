@@ -34,6 +34,14 @@ Load into raw tables: `src/storage/load.py` (`upsert_products`, `load_users` / `
 python src/storage/load.py
 ```
 
+Persist seed + simulated batches to Postgres:
+
+```bash
+python src/pipeline/run_batch.py
+```
+
+First run seeds when `raw.users` is empty; later runs load state from the DB, apply `simulate_batch`, and write closes/inserts.
+
 ## Data
 Ingests products from the FakeStore API (`src/ingestion/products.py`).
 

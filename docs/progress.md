@@ -16,10 +16,12 @@ Build an end-to-end e-commerce data pipeline: ingest products from an external A
 - Raw Postgres schema (`sql/raw_schema.sql`): schema `raw` with `products` (upsert catalog) and SCD2 tables `users`, `orders`, `order_items`; unique partial indexes enforce one current row per `entity_id`.
 - DB connection helper (`src/storage/db.py`): loads `.env`, builds SQLAlchemy engine with psycopg2 (`get_engine` / `get_connection`).
 - Load functions (`src/storage/load.py`): `upsert_products` by `id`; `load_users` / `load_orders` / `load_order_items` close via `valid_until` then append new versions (re-run safe).
+- Read helpers (`src/storage/read.py`): fetch raw tables and `is_seeded()`.
+- Pipeline runner (`src/pipeline/run_batch.py`): upsert products; seed once if empty; otherwise load DB state → `simulate_batch` → persist.
 
 ## Next steps
 
-Immediate next step: **5**.
+Immediate next step: **6**.
 
 ### PostgreSQL raw storage
 
@@ -27,7 +29,7 @@ Immediate next step: **5**.
 2. ~~Define raw schema for `products`, `users`, `orders`, `order_items` matching generated fields (including SCD2 columns where applicable).~~
 3. ~~Add `src/storage/` with a DB connection helper (SQLAlchemy + psycopg2).~~
 4. ~~Implement load functions: upsert products by `id`; for users/orders/order_items append new versions and close current rows via `valid_until` only.~~
-5. Wire a batch run to persist to Postgres (seed once, then `simulate_batch` writes to the DB).
+5. ~~Wire a batch run to persist to Postgres (seed once, then `simulate_batch` writes to the DB).~~
 6. Manually verify after two runs: current rows (`valid_until IS NULL`) vs historical versions look correct.
 
 ### dbt transformation

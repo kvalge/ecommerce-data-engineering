@@ -9,6 +9,12 @@ from .load import (
     load_users,
     upsert_products,
 )
+from .read import (
+    fetch_order_items,
+    fetch_orders,
+    fetch_users,
+    is_seeded,
+)
 
 __all__ = [
     "get_connection",
@@ -22,4 +28,8 @@ __all__ = [
     "load_users",
     "load_orders",
     "load_order_items",
+    "fetch_users",
+    "fetch_orders",
+    "fetch_order_items",
+    "is_seeded",
 ]

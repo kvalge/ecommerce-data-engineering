@@ -68,6 +68,19 @@ docker compose --profile dbt run --rm dbt build --select marts
 docker compose --profile dbt run --rm dbt docs generate
 ```
 
+### Airflow 3.3.1 (Docker)
+
+Airflow shares the same Postgres container (metadata DB `airflow`, data DB `ecommerce`). LocalExecutor is used (no Redis/Celery). UI: http://localhost:8080 (user/password from `.env`, default `airflow` / `airflow`).
+
+```bash
+# If Postgres volume already existed before Airflow was added:
+docker compose exec -T postgres psql -U ecommerce -d postgres < sql/init_airflow_db.sql
+
+docker compose --profile airflow up -d
+```
+
+DAGs live in `airflow/dags/` (pipeline DAG comes in step 13).
+
 ## Data
 Ingests products from the FakeStore API (`src/ingestion/products.py`).
 

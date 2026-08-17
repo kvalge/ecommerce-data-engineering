@@ -3,7 +3,10 @@
 # Uses LocalExecutor (no Redis/Celery) for a simpler local setup.
 
 x-airflow-common: &airflow-common
-  image: ${AIRFLOW_IMAGE_NAME:-apache/airflow:3.3.1}
+  build:
+    context: .
+    dockerfile: Dockerfile.airflow
+  image: ${AIRFLOW_IMAGE_NAME:-ecommerce-airflow:3.3.1}
   env_file:
     - .env
   environment: &airflow-common-env
@@ -18,12 +21,24 @@ x-airflow-common: &airflow-common
     AIRFLOW__API_AUTH__JWT_ISSUER: ${AIRFLOW__API_AUTH__JWT_ISSUER:-airflow}
     AIRFLOW__SCHEDULER__ENABLE_HEALTH_CHECK: "true"
     AIRFLOW_CONFIG: /opt/airflow/config/airflow.cfg
-    _PIP_ADDITIONAL_REQUIREMENTS: ${_PIP_ADDITIONAL_REQUIREMENTS:-}
+    # Pipeline + dbt inside Airflow: use Docker network host/port (override .env host values).
+    POSTGRES_HOST: postgres
+    POSTGRES_PORT: "5432"
+    DBT_HOST: postgres
+    DBT_PORT: "5432"
+    DBT_IMAGE: ${DBT_IMAGE:-ghcr.io/dbt-labs/dbt-postgres:1.8.2}
+    # Absolute host path to this repo (Windows: use forward slashes). Used to mount dbt/ into docker run.
+    COMPOSE_PROJECT_DIR: ${COMPOSE_PROJECT_DIR}
+    COMPOSE_NETWORK: ${COMPOSE_NETWORK:-ecommerce-data-engineering_default}
+    PYTHONPATH: /opt/airflow/project/src
   volumes:
     - ./airflow/dags:/opt/airflow/dags
     - ./airflow/logs:/opt/airflow/logs
     - ./airflow/config:/opt/airflow/config
     - ./airflow/plugins:/opt/airflow/plugins
+    - ./src:/opt/airflow/project/src
+    - ./.env:/opt/airflow/project/.env:ro
+    - /var/run/docker.sock:/var/run/docker.sock
   user: "${AIRFLOW_UID:-50000}:0"
   depends_on:
     postgres:

@@ -25,10 +25,11 @@ Build an end-to-end e-commerce data pipeline: ingest products from an external A
 - dbt intermediate (star schema): `dim_products`, `dim_users` (current), `fct_orders` (as-of user on `order_date`), `fct_order_items`.
 - dbt analytical marts: `mart_sales`, `mart_customers`, `mart_products` with schema descriptions and `docs.md`; `dbt docs generate` OK.
 - Airflow 3.3.1 via Docker Compose (`--profile airflow`): LocalExecutor; shared Postgres with separate `airflow` metadata DB (`sql/init_airflow_db.sql`); UI on port 8080; folders under `airflow/`.
+- DAG `ecommerce_pipeline`: ingest/simulate/load (`run_batch.py`) → `dbt run` → `dbt test`; `@daily` schedule; 2 retries / 5 min; custom image `Dockerfile.airflow` (pipeline deps + Docker CLI); dbt via `docker run` of the same dbt image as Compose.
 
 ## Next steps
 
-Immediate next step: **13**.
+Immediate next step: **14**.
 
 ### PostgreSQL raw storage
 
@@ -50,7 +51,7 @@ Immediate next step: **13**.
 ### Airflow orchestration
 
 12. ~~Add Airflow via Docker Compose (share the stack with Postgres where practical).~~
-13. Create a DAG: ingest/simulate → load Postgres → `dbt run` → `dbt test`; add schedule and retries.
+13. ~~Create a DAG: ingest/simulate → load Postgres → `dbt run` → `dbt test`; add schedule and retries.~~
 
 ### Docs polish
 

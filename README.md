@@ -72,14 +72,22 @@ docker compose --profile dbt run --rm dbt docs generate
 
 Airflow shares the same Postgres container (metadata DB `airflow`, data DB `ecommerce`). LocalExecutor is used (no Redis/Celery). UI: http://localhost:8080 (user/password from `.env`, default `airflow` / `airflow`).
 
+Custom image (`Dockerfile.airflow`) installs the Python ingestion deps and a Docker CLI so the DAG can run `dbt` via the existing `ghcr.io/dbt-labs/dbt-postgres` image (avoids dbt/Airflow package conflicts). Set `COMPOSE_PROJECT_DIR` in `.env` to this repo's absolute host path (forward slashes).
+
 ```bash
 # If Postgres volume already existed before Airflow was added:
 docker compose exec -T postgres psql -U ecommerce -d postgres < sql/init_airflow_db.sql
 
+docker compose --profile airflow build
 docker compose --profile airflow up -d
 ```
 
-DAGs live in `airflow/dags/` (pipeline DAG comes in step 13).
+DAG `ecommerce_pipeline` (`airflow/dags/ecommerce_pipeline.py`): ingest/simulate/load → `dbt run` → `dbt test` (daily schedule, 2 retries). It starts paused — unpause in the UI or:
+
+```bash
+docker compose --profile airflow exec airflow-scheduler airflow dags unpause ecommerce_pipeline
+docker compose --profile airflow exec airflow-scheduler airflow dags trigger ecommerce_pipeline
+```
 
 ## Data
 Ingests products from the FakeStore API (`src/ingestion/products.py`).

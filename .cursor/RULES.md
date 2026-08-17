@@ -22,7 +22,7 @@ alwaysApply: true
 - Keep `.env.example` updated with all required environment variables, using placeholder values (never real secrets).
 - Keep `.gitignore` updated to exclude local files, caches, and sensitive data.
 - Keep `README.md` updated when functionality or workflow changes.
-- With every step made update docs\progress.md, what is done or changed.
+- Keep `docs/pipeline.md` accurate when the pipeline architecture or layers change (plain-language explainer for non–data-engineers).
 
 ## Security
 

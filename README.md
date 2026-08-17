@@ -1,105 +1,167 @@
 # E-Commerce Data Engineering
 
-This project demonstrates the development of an end-to-end e-commerce data pipeline. The goal is to collect data from external sources, generate additional business data, store raw data, transform it into an analytical format, and prepare it for reporting and analysis.
+Local end-to-end pipeline: **ingest → Postgres → dbt → Airflow**.
 
-The project uses Python for data ingestion, PostgreSQL for data storage, dbt for data transformation, and Airflow for workflow orchestration.
+Products come from a public API; users/orders/items are simulated with history (SCD Type 2). dbt builds analysis tables; Airflow runs the job daily.
 
-The data model represents a typical e-commerce business, including products, users, orders, and order items. The final analytical layer will provide insights into sales performance, customer behavior, and product performance.
+**New to data engineering?** Read [docs/pipeline.md](docs/pipeline.md) first — it explains each step and why it exists in plain language.
 
-## Setup
+---
+
+## What you get
+
+| Stage | Output |
+| --- | --- |
+| Ingestion | Products from FakeStore API + fake users/orders/items |
+| Storage | PostgreSQL schema `raw` |
+| Transformation | dbt models in schema `analytics` (`stg_*` → `dim_*`/`fct_*` → `mart_*`) |
+| Orchestration | Airflow DAG `ecommerce_pipeline` |
+
+---
+
+## Prerequisites
+
+- Python 3.11+
+- Docker Desktop (Compose)
+- Copy of this repo
+
+---
+
+## Quick start (end-to-end)
+
+### 1. Python deps and env file
 
 ```bash
+python -m venv venv
+# Windows: .\venv\Scripts\activate
+# macOS/Linux: source venv/bin/activate
 pip install -r requirements.txt
 cp .env.example .env
-docker compose up -d
 ```
 
-Copy `.env.example` to `.env` and adjust credentials if needed. Never commit `.env`. Postgres runs on the port set in `.env` (default `5432`).
+Edit `.env`:
 
-Raw tables are defined in `sql/raw_schema.sql` (schema `raw`: `products`, `users`, `orders`, `order_items`). On first Postgres start, Docker applies that file automatically. If the database volume already exists, apply it manually:
+1. Set DB password/port if you want (defaults work).
+2. Set **`COMPOSE_PROJECT_DIR`** to this repo’s absolute path using **forward slashes**, e.g.  
+   `C:/Users/you/software_development/ecommerce-data-engineering`  
+   (needed so Airflow can mount the `dbt/` folder when it runs dbt).
+
+Never commit `.env`.
+
+### 2. Start Postgres
+
+```bash
+docker compose up -d postgres
+```
+
+On **first** start, Docker applies `sql/raw_schema.sql` and `sql/init_airflow_db.sql`.  
+If Postgres was created before those scripts existed:
 
 ```bash
 docker compose exec -T postgres psql -U ecommerce -d ecommerce < sql/raw_schema.sql
+docker compose exec -T postgres psql -U ecommerce -d postgres < sql/init_airflow_db.sql
 ```
 
-DB connection helper: `src/storage/db.py` (reads `.env`, SQLAlchemy + psycopg2).
+Check the connection from the host:
 
 ```bash
 python src/storage/db.py
 ```
 
-Load into raw tables: `src/storage/load.py` (`upsert_products`, `load_users` / `load_orders` / `load_order_items`).
-
-```bash
-python src/storage/load.py
-```
-
-Persist seed + simulated batches to Postgres:
+### 3. Load a batch into `raw` (optional manual check)
 
 ```bash
 python src/pipeline/run_batch.py
 ```
 
-First run seeds when `raw.users` is empty; later runs load state from the DB, apply `simulate_batch`, and write closes/inserts.
+- First run: seeds data if `raw.users` is empty.  
+- Later runs: load current state → simulate creates/updates/drops → write to Postgres.
 
-### dbt (Docker)
-
-dbt runs in Compose (no local `pip install dbt` needed). Project files live in `dbt/`; the container talks to Postgres as host `postgres` on port `5432` (Docker network).
+### 4. Build analytics with dbt
 
 ```bash
-docker compose up -d postgres
 docker compose --profile dbt run --rm dbt debug
-docker compose --profile dbt run --rm dbt run --select staging
 docker compose --profile dbt run --rm dbt run
 docker compose --profile dbt run --rm dbt test
 ```
 
-Staging views (from `raw.*`) land in schema `analytics`: `stg_products`, `stg_users`, `stg_orders`, `stg_order_items`.
+Optional docs site:
 
 ```bash
-docker compose --profile dbt run --rm dbt test --select staging
-docker compose --profile dbt run --rm dbt build --select intermediate
-```
-
-Layering: `raw` → `staging` (`stg_*`) → `intermediate` (`dim_*` / `fct_*`) → `marts` (`mart_sales`, `mart_customers`, `mart_products`).
-
-```bash
-docker compose --profile dbt run --rm dbt build --select marts
 docker compose --profile dbt run --rm dbt docs generate
 ```
 
-### Airflow 3.3.1 (Docker)
-
-Airflow shares the same Postgres container (metadata DB `airflow`, data DB `ecommerce`). LocalExecutor is used (no Redis/Celery). UI: http://localhost:8080 (user/password from `.env`, default `airflow` / `airflow`).
-
-Custom image (`Dockerfile.airflow`) installs the Python ingestion deps and a Docker CLI so the DAG can run `dbt` via the existing `ghcr.io/dbt-labs/dbt-postgres` image (avoids dbt/Airflow package conflicts). Set `COMPOSE_PROJECT_DIR` in `.env` to this repo's absolute host path (forward slashes).
+### 5. Run the full stack with Airflow
 
 ```bash
-# If Postgres volume already existed before Airflow was added:
-docker compose exec -T postgres psql -U ecommerce -d postgres < sql/init_airflow_db.sql
-
 docker compose --profile airflow build
 docker compose --profile airflow up -d
 ```
 
-DAG `ecommerce_pipeline` (`airflow/dags/ecommerce_pipeline.py`): ingest/simulate/load → `dbt run` → `dbt test` (daily schedule, 2 retries). It starts paused — unpause in the UI or:
+- UI: http://localhost:8080  
+- Login: values from `.env` (default `airflow` / `airflow`)
+
+DAG **`ecommerce_pipeline`** (starts paused):
+
+1. `ingest_and_load` — Python batch into `raw`  
+2. `dbt_run` — rebuild models  
+3. `dbt_test` — quality checks  
+
+Schedule: daily · retries: 2 (5 minutes apart).
 
 ```bash
 docker compose --profile airflow exec airflow-scheduler airflow dags unpause ecommerce_pipeline
 docker compose --profile airflow exec airflow-scheduler airflow dags trigger ecommerce_pipeline
 ```
 
-## Data
-Ingests products from the FakeStore API (`src/ingestion/products.py`).
+Or unpause/trigger in the UI.
 
-Generates versioned fake users, orders, and order_items (SCD Type 2):
-- `id` — unique version row
-- `entity_id` — stable id linking versions of the same entity
-- `valid_from` / `valid_until` — version validity (`valid_until` is `NULL` while current)
+---
 
-Modules: `src/ingestion/users.py`, `orders.py`, `order_items.py`.  
-Each simulation run mixes creates, updates, and soft-drops via `src/ingestion/simulate_batch.py` (old versions stay intact).
+## Project layout
 
-```bash
-python src/ingestion/simulate_batch.py
+```text
+src/ingestion/     Pull products + generate SCD2 users/orders/items
+src/storage/       Postgres helpers (connect, load, read)
+src/pipeline/      run_batch.py — one full load step
+sql/               Schema + Airflow DB bootstrap
+dbt/               Staging, intermediate, marts
+airflow/           DAGs and Airflow config
+docs/pipeline.md   Plain-language walkthrough of the pipeline
 ```
+
+---
+
+## Data model (short)
+
+| Entity | Source | History |
+| --- | --- | --- |
+| Products | FakeStore API | Upsert by product id |
+| Users / orders / order items | Faker + simulation | SCD2 (`entity_id`, `valid_from`, `valid_until`) |
+
+Simulation mixes **creates**, **updates**, and **soft-drops** each batch (`src/ingestion/simulate_batch.py`).
+
+Analytics layers:
+
+`raw` → `analytics.stg_*` → `analytics.dim_*` / `fct_*` → `analytics.mart_sales` / `mart_customers` / `mart_products`
+
+---
+
+## Useful commands
+
+| Goal | Command |
+| --- | --- |
+| One batch load | `python src/pipeline/run_batch.py` |
+| dbt only | `docker compose --profile dbt run --rm dbt run` |
+| dbt tests | `docker compose --profile dbt run --rm dbt test` |
+| Start Airflow | `docker compose --profile airflow up -d` |
+| Stop Airflow | `docker compose --profile airflow down` |
+| Stop Postgres | `docker compose down` |
+
+---
+
+## Notes
+
+- Host Postgres port comes from `.env` (`POSTGRES_PORT`; this machine often uses `5433` if `5432` is taken). Inside Docker, services still talk to `postgres:5432`.
+- Airflow metadata uses a separate database (`airflow`) on the same Postgres container as the shop data (`ecommerce`).
+- More detail and “why” for each step: [docs/pipeline.md](docs/pipeline.md).

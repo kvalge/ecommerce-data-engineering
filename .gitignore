@@ -8,17 +8,21 @@ venv/
 __pycache__/
 *.pyc
 
-# VS Code settings (valikuline)
+# IDE / OS
 .vscode/
-
-# OS-specific
 .DS_Store
 Thumbs.db
+
+# Local leftovers (data lives in Postgres, not on disk)
+data/
+logs/
+*.log
 
 # dbt
 dbt/target/
 dbt/dbt_packages/
 dbt/logs/
+dbt/.user.yml
 
 # Airflow
 airflow/logs/

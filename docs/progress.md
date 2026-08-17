@@ -22,7 +22,7 @@ Build an end-to-end e-commerce data pipeline: ingest products from an external A
 - dbt via Docker: project in `dbt/` (`dbt_project.yml`, `profiles.yml`); Compose service `dbt` (`ghcr.io/dbt-labs/dbt-postgres:1.8.2`) connects to `postgres` on the Docker network; `dbt debug` OK.
 - dbt staging: sources for `raw.products|users|orders|order_items`; views `analytics.stg_*` with renames, casts, `is_current`, and `line_total` on order items.
 - dbt tests on staging: `not_null` / `unique` / `relationships`; one current row per entity (`unique` where `is_current` + singular tests in `dbt/tests/`).
-- dbt marts: `dim_products`, `dim_users` (current), `fct_orders` (as-of user on `order_date`), `fct_order_items` joined to facts.
+- dbt intermediate (star schema): `dim_products`, `dim_users` (current), `fct_orders` (as-of user on `order_date`), `fct_order_items`; `models/marts/` reserved for analytical marts (step 11).
 
 ## Next steps
 
@@ -42,7 +42,7 @@ Immediate next step: **11**.
 7. ~~Initialize a dbt project and profile pointed at the same Postgres database.~~
 8. ~~Add staging models and sources for the four raw tables.~~
 9. ~~Add tests (`not_null`, `unique`, relationships) and enforce one current row per `entity_id` where applicable.~~
-10. ~~Build marts: dimension tables (`dim_users`, `dim_products`) and fact tables (`fct_orders` / `fct_order_items`) with as-of SCD2 joins.~~
+10. ~~Build intermediate dims/facts (`dim_users`, `dim_products`, `fct_orders`, `fct_order_items`) with as-of SCD2 joins; marts folder reserved for analytical models.~~
 11. Add analytical marts (sales, customer, product performance), `schema.yml` descriptions, and dbt docs.
 
 ### Airflow orchestration

@@ -2,7 +2,7 @@ version: 2
 
 models:
   - name: dim_products
-    description: Product dimension from the FakeStore catalog.
+    description: Product dimension from the FakeStore catalog (intermediate / star-schema core).
     columns:
       - name: product_id
         description: Product primary key.

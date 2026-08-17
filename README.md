@@ -24,13 +24,22 @@ Products come from a public API; users/orders/items are simulated with history (
 - Docker Desktop (Compose)
 - Copy of this repo
 
-A local Python install is **optional** (only if you prefer running scripts on the host).
-
 ---
 
-## Quick start (Docker end-to-end)
+## Docker commands (order matters)
 
-### 1. Env file
+### `build` vs `up` vs `run`
+
+| Command | When |
+| --- | --- |
+| **`build`** | First time, or after you change a `Dockerfile*` / `requirements.txt` |
+| **`up -d`** | Start (or restart) long-running services: Postgres + Airflow |
+| **`run --rm`** | One-off jobs: Python batch or dbt (not left running) |
+| **`down`** | Stop containers (Postgres data volume is kept) |
+
+You do **not** need `build` every time you start the project again.
+
+### 1. First time only — env file
 
 ```bash
 cp .env.example .env
@@ -38,103 +47,89 @@ cp .env.example .env
 
 Edit `.env`:
 
-1. Adjust DB password/port if you want (defaults work).
-2. Set **`COMPOSE_PROJECT_DIR`** to this repo’s absolute path using **forward slashes**, e.g.  
-   `C:/Users/you/software_development/ecommerce-data-engineering`  
-   (Airflow uses this to mount `src/` and `dbt/` into sibling containers).
+1. Defaults are fine for a local demo.
+2. Set **`COMPOSE_PROJECT_DIR`** to this repo’s absolute path with **forward slashes**, e.g.  
+   `C:/Users/you/software_development/ecommerce-data-engineering`
 
 Never commit `.env`.
 
-### One command: build everything and start the stack
-
-Builds the Python, dbt, and Airflow images, then starts **Postgres + Airflow** (the long-running services). Pipeline and dbt stay available as images for manual runs and for the Airflow DAG.
+### 2. First time only — build custom images
 
 ```bash
-docker compose --profile pipeline --profile dbt --profile airflow build && docker compose --profile airflow up -d
+docker compose --profile pipeline --profile dbt --profile airflow build
 ```
 
-- UI: http://localhost:8080 (default login `airflow` / `airflow`)
-- Unpause and trigger DAG `ecommerce_pipeline` in the UI, or:
+Builds **only** our project images (from Dockerfiles):
+
+| Image | From |
+| --- | --- |
+| `ecommerce-pipeline` | `Dockerfile.python` |
+| `ecommerce-dbt` | `Dockerfile.dbt` |
+| `ecommerce-airflow` | `Dockerfile.airflow` |
+
+This step does **not** create or start Postgres.
+
+Postgres uses the public image `postgres:16` (no project Dockerfile). Docker **pulls** that image and **creates/starts** the Postgres container on the next step (`up -d`), the first time it is needed.
+
+### 3. Start the stack (every time you want it running)
+
+```bash
+docker compose --profile airflow up -d
+```
+
+Creates and starts **containers**:
+
+1. **Postgres** — pulls `postgres:16` if missing, creates container + data volume, applies `sql/*.sql` on first volume only  
+2. **Airflow** — creates/starts Airflow containers (uses the image from step 2)
+
+Pipeline and dbt stay as images until you `run` them or the DAG starts them.
+
+- UI: http://localhost:8080 (default `airflow` / `airflow`)
+- DAG `ecommerce_pipeline` starts **paused**. Unpause + trigger in the UI, or:
 
 ```bash
 docker compose --profile airflow exec airflow-scheduler airflow dags unpause ecommerce_pipeline
 docker compose --profile airflow exec airflow-scheduler airflow dags trigger ecommerce_pipeline
 ```
 
-Stop everything:
+### 4. Stop the stack
 
 ```bash
 docker compose --profile airflow down
 ```
 
-### Step by step (same stack, more detail)
+Containers stop. **Database data stays** on the Docker volume.
 
-#### 1. Start Postgres only
+### Already ran it before, then stopped?
 
-```bash
-docker compose up -d postgres
-```
+Do **not** repeat env copy or `build`.
 
-On **first** start, Docker applies `sql/raw_schema.sql` and `sql/init_airflow_db.sql`.  
-If Postgres was created before those scripts existed:
+Just start again:
 
 ```bash
-docker compose exec -T postgres psql -U ecommerce -d ecommerce < sql/raw_schema.sql
-docker compose exec -T postgres psql -U ecommerce -d postgres < sql/init_airflow_db.sql
+docker compose --profile airflow up -d
 ```
 
-#### 2. Run a Python batch (Docker)
-
-```bash
-docker compose --profile pipeline build
-docker compose --profile pipeline run --rm pipeline
-```
-
-- First run: seeds data if `raw.users` is empty.
-- Later runs: load state → simulate creates/updates/drops → write to Postgres.
-
-Check DB connectivity the same way:
-
-```bash
-docker compose --profile pipeline run --rm pipeline python src/storage/db.py
-```
-
-#### 3. Build analytics with dbt
-
-```bash
-docker compose --profile dbt build
-docker compose --profile dbt run --rm dbt debug
-docker compose --profile dbt run --rm dbt run
-docker compose --profile dbt run --rm dbt test
-```
-
-#### 4. Orchestrate with Airflow
+Rebuild only if you changed Dockerfiles or Python requirements:
 
 ```bash
 docker compose --profile pipeline --profile dbt --profile airflow build
 docker compose --profile airflow up -d
 ```
 
-DAG **`ecommerce_pipeline`** (starts paused):
-
-1. `ingest_and_load` — `docker run` the Python pipeline image  
-2. `dbt_run` — `docker run` the dbt image  
-3. `dbt_test` — dbt tests  
-
-Schedule: daily · retries: 2 (5 minutes apart).
-
 ---
 
-## Optional: run Python on the host
+## Optional one-off jobs (stack can be up)
 
-```bash
-python -m venv venv
-# Windows: .\venv\Scripts\activate
-pip install -r requirements.txt
-python src/pipeline/run_batch.py
-```
+Postgres must be running (`up -d` above is enough).
 
-Use host `POSTGRES_HOST` / `POSTGRES_PORT` from `.env` (often `localhost` and `5433`).
+| Goal | Command |
+| --- | --- |
+| One Python batch into `raw` | `docker compose --profile pipeline run --rm pipeline` |
+| dbt models | `docker compose --profile dbt run --rm dbt run` |
+| dbt tests | `docker compose --profile dbt run --rm dbt test` |
+
+First batch **seeds** if `raw` is empty; later batches simulate creates/updates/drops.
 
 ---
 
@@ -145,7 +140,7 @@ src/ingestion/          Pull products + generate SCD2 users/orders/items
 src/storage/            Postgres helpers (connect, load, read)
 src/pipeline/           run_batch.py — one full load step
 Dockerfile.python       Python batch image
-Dockerfile.dbt          dbt image (based on dbt-postgres 1.8.2)
+Dockerfile.dbt          dbt image
 Dockerfile.airflow      Airflow image (+ Docker CLI for sibling runs)
 sql/                    Schema + Airflow DB bootstrap
 dbt/                    Staging, intermediate, marts
@@ -162,28 +157,13 @@ docs/pipeline.md        Plain-language walkthrough
 | Products | FakeStore API | Upsert by product id |
 | Users / orders / order items | Faker + simulation | SCD2 (`entity_id`, `valid_from`, `valid_until`) |
 
-Analytics layers:
-
-`raw` → `analytics.stg_*` → `analytics.dim_*` / `fct_*` → `analytics.mart_sales` / `mart_customers` / `mart_products`
-
----
-
-## Useful commands
-
-| Goal | Command |
-| --- | --- |
-| Start full stack | `docker compose --profile pipeline --profile dbt --profile airflow build && docker compose --profile airflow up -d` |
-| One batch load | `docker compose --profile pipeline run --rm pipeline` |
-| dbt run | `docker compose --profile dbt run --rm dbt run` |
-| dbt tests | `docker compose --profile dbt run --rm dbt test` |
-| Start Airflow | `docker compose --profile airflow up -d` |
-| Stop stack | `docker compose --profile airflow down` |
-| Stop Postgres only | `docker compose down` |
+`raw` → `analytics.stg_*` → `analytics.dim_*` / `fct_*` → `analytics.mart_*`
 
 ---
 
 ## Notes
 
-- Host Postgres port comes from `.env` (`POSTGRES_PORT`). Inside Docker, services talk to `postgres:5432`.
-- Airflow metadata uses DB `airflow` on the same Postgres container as shop data (`ecommerce`).
+- Host Postgres port: `.env` → `POSTGRES_PORT`. Inside Docker: `postgres:5432`.
+- Shop data DB: `ecommerce`. Airflow metadata DB: `airflow` (same Postgres container).
+- Schema SQL runs automatically on **first** Postgres volume create only.
 - More detail: [docs/pipeline.md](docs/pipeline.md).

@@ -49,9 +49,12 @@ dbt runs in Compose (no local `pip install dbt` needed). Project files live in `
 ```bash
 docker compose up -d postgres
 docker compose --profile dbt run --rm dbt debug
+docker compose --profile dbt run --rm dbt run --select staging
 docker compose --profile dbt run --rm dbt run
 docker compose --profile dbt run --rm dbt test
 ```
+
+Staging views (from `raw.*`) land in schema `analytics`: `stg_products`, `stg_users`, `stg_orders`, `stg_order_items`.
 
 ## Data
 Ingests products from the FakeStore API (`src/ingestion/products.py`).

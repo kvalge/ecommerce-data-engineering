@@ -1,0 +1,50 @@
+version: 2
+
+models:
+  - name: stg_products
+    description: Cleaned product catalog from raw.products.
+    columns:
+      - name: product_id
+        description: Product id from the external API.
+      - name: product_name
+        description: Product title.
+      - name: unit_price
+        description: Catalog price.
+
+  - name: stg_users
+    description: All user versions from raw.users (SCD2), with is_current flag.
+    columns:
+      - name: user_version_id
+        description: Surrogate key for this version row.
+      - name: user_id
+        description: Stable user entity_id.
+      - name: is_current
+        description: True when valid_until is null.
+
+  - name: stg_orders
+    description: All order versions from raw.orders (SCD2), with is_current flag.
+    columns:
+      - name: order_version_id
+        description: Surrogate key for this version row.
+      - name: order_id
+        description: Stable order entity_id.
+      - name: user_id
+        description: User entity_id who placed the order.
+      - name: is_current
+        description: True when valid_until is null.
+
+  - name: stg_order_items
+    description: All order_item versions from raw.order_items (SCD2), with is_current flag.
+    columns:
+      - name: order_item_version_id
+        description: Surrogate key for this version row.
+      - name: order_item_id
+        description: Stable order_item entity_id.
+      - name: order_id
+        description: Parent order entity_id.
+      - name: product_id
+        description: Product id.
+      - name: line_total
+        description: quantity * unit_price.
+      - name: is_current
+        description: True when valid_until is null.

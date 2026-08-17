@@ -1,0 +1,39 @@
+version: 2
+
+sources:
+  - name: raw
+    description: Raw e-commerce tables loaded by the Python pipeline.
+    schema: raw
+    tables:
+      - name: products
+        description: Product catalog from FakeStore API (upsert by id, no SCD2).
+        columns:
+          - name: id
+            description: Product primary key from the API.
+      - name: users
+        description: User profiles with SCD Type 2 versioning.
+        columns:
+          - name: id
+            description: Version row primary key.
+          - name: entity_id
+            description: Stable user business key across versions.
+      - name: orders
+        description: Orders with SCD Type 2 versioning.
+        columns:
+          - name: id
+            description: Version row primary key.
+          - name: entity_id
+            description: Stable order business key across versions.
+          - name: user_id
+            description: References users.entity_id.
+      - name: order_items
+        description: Order line items with SCD Type 2 versioning.
+        columns:
+          - name: id
+            description: Version row primary key.
+          - name: entity_id
+            description: Stable order_item business key across versions.
+          - name: order_id
+            description: References orders.entity_id.
+          - name: product_id
+            description: References products.id.

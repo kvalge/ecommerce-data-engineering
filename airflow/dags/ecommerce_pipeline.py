@@ -18,10 +18,25 @@ _PROJECT_DIR = os.environ.get(
     "COMPOSE_PROJECT_DIR",
     "/opt/airflow/compose_project",
 )
-_DBT_IMAGE = os.environ.get("DBT_IMAGE", "ghcr.io/dbt-labs/dbt-postgres:1.8.2")
 _NETWORK = os.environ.get(
     "COMPOSE_NETWORK",
     "ecommerce-data-engineering_default",
+)
+_PIPELINE_IMAGE = os.environ.get("PIPELINE_IMAGE", "ecommerce-pipeline:latest")
+_DBT_IMAGE = os.environ.get("DBT_IMAGE", "ecommerce-dbt:1.8.2")
+
+_PIPELINE_CMD = (
+    f"docker run --rm --network {_NETWORK} "
+    f'-v "{_PROJECT_DIR}/src:/app/src" '
+    f'-v "{_PROJECT_DIR}/.env:/app/.env:ro" '
+    "-e POSTGRES_HOST=postgres "
+    "-e POSTGRES_PORT=5432 "
+    "-e POSTGRES_USER "
+    "-e POSTGRES_PASSWORD "
+    "-e POSTGRES_DB "
+    "-e PYTHONPATH=/app/src "
+    f"-w /app {_PIPELINE_IMAGE} "
+    "python src/pipeline/run_batch.py"
 )
 
 _DBT_RUN_BASE = (
@@ -47,10 +62,7 @@ with DAG(
 ) as dag:
     ingest_and_load = BashOperator(
         task_id="ingest_and_load",
-        bash_command=(
-            "cd /opt/airflow/project && "
-            "PYTHONPATH=src python src/pipeline/run_batch.py"
-        ),
+        bash_command=_PIPELINE_CMD,
     )
 
     dbt_run = BashOperator(

@@ -1,4 +1,4 @@
-# E-commerce data stack: Postgres + dbt (profile) + Airflow 3.3.1 (profile).
+# E-commerce data stack: Postgres + Python pipeline + dbt + Airflow 3.3.1.
 # Airflow shares the same Postgres service (separate `airflow` database).
 # Uses LocalExecutor (no Redis/Celery) for a simpler local setup.
 
@@ -21,23 +21,21 @@ x-airflow-common: &airflow-common
     AIRFLOW__API_AUTH__JWT_ISSUER: ${AIRFLOW__API_AUTH__JWT_ISSUER:-airflow}
     AIRFLOW__SCHEDULER__ENABLE_HEALTH_CHECK: "true"
     AIRFLOW_CONFIG: /opt/airflow/config/airflow.cfg
-    # Pipeline + dbt inside Airflow: use Docker network host/port (override .env host values).
+    # DAG tasks run sibling containers; override host .env values for Docker DNS.
     POSTGRES_HOST: postgres
     POSTGRES_PORT: "5432"
     DBT_HOST: postgres
     DBT_PORT: "5432"
-    DBT_IMAGE: ${DBT_IMAGE:-ghcr.io/dbt-labs/dbt-postgres:1.8.2}
-    # Absolute host path to this repo (Windows: use forward slashes). Used to mount dbt/ into docker run.
+    DBT_IMAGE: ${DBT_IMAGE:-ecommerce-dbt:1.8.2}
+    PIPELINE_IMAGE: ${PIPELINE_IMAGE:-ecommerce-pipeline:latest}
+    # Absolute host path to this repo (Windows: use forward slashes).
     COMPOSE_PROJECT_DIR: ${COMPOSE_PROJECT_DIR}
     COMPOSE_NETWORK: ${COMPOSE_NETWORK:-ecommerce-data-engineering_default}
-    PYTHONPATH: /opt/airflow/project/src
   volumes:
     - ./airflow/dags:/opt/airflow/dags
     - ./airflow/logs:/opt/airflow/logs
     - ./airflow/config:/opt/airflow/config
     - ./airflow/plugins:/opt/airflow/plugins
-    - ./src:/opt/airflow/project/src
-    - ./.env:/opt/airflow/project/.env:ro
     - /var/run/docker.sock:/var/run/docker.sock
   user: "${AIRFLOW_UID:-50000}:0"
   depends_on:
@@ -67,8 +65,33 @@ services:
       timeout: 5s
       retries: 5
 
+  pipeline:
+    build:
+      context: .
+      dockerfile: Dockerfile.python
+    image: ${PIPELINE_IMAGE:-ecommerce-pipeline:latest}
+    container_name: ecommerce_pipeline
+    working_dir: /app
+    volumes:
+      - ./src:/app/src
+      - ./.env:/app/.env:ro
+    env_file:
+      - .env
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+      PYTHONPATH: /app/src
+    depends_on:
+      postgres:
+        condition: service_healthy
+    profiles:
+      - pipeline
+
   dbt:
-    image: ghcr.io/dbt-labs/dbt-postgres:1.8.2
+    build:
+      context: .
+      dockerfile: Dockerfile.dbt
+    image: ${DBT_IMAGE:-ecommerce-dbt:1.8.2}
     container_name: ecommerce_dbt
     working_dir: /usr/app
     volumes:
@@ -84,7 +107,6 @@ services:
         condition: service_healthy
     profiles:
       - dbt
-    entrypoint: ["dbt"]
 
   airflow-init:
     <<: *airflow-common

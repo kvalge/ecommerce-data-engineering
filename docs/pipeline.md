@@ -32,7 +32,7 @@ That whole path is the **data pipeline**.
         │                         │
         └────────────┬────────────┘
                      ▼
-            Python batch job
+         Python batch (Docker)
          (ingest + simulate + load)
                      │
                      ▼
@@ -40,7 +40,7 @@ That whole path is the **data pipeline**.
               (as landed / history)
                      │
                      ▼
-                    dbt
+                dbt (Docker)
          staging → dimensions/facts → marts
                      │
                      ▼
@@ -49,21 +49,23 @@ That whole path is the **data pipeline**.
                      ▲
                      │
                  Airflow DAG
-        (runs batch → dbt run → dbt test)
+     (docker run pipeline → dbt run → dbt test)
 ```
 
 | Layer | Tool | Role in one sentence |
 | --- | --- | --- |
-| Ingestion | Python | Bring data in and simulate realistic changes |
+| Ingestion | Python in Docker | Bring data in and simulate realistic changes |
 | Storage | PostgreSQL (`raw`) | Keep source-like history |
-| Transformation | dbt | Clean, join, and build reporting tables |
-| Orchestration | Airflow | Run the steps in order, every day |
+| Transformation | dbt in Docker | Clean, join, and build reporting tables |
+| Orchestration | Airflow in Docker | Run the steps in order, every day |
 
 ---
 
-## Step 1 — Bring data in (Python)
+## Step 1 — Bring data in (Python in Docker)
 
-**Where:** `src/ingestion/`, `src/pipeline/run_batch.py`
+**Where:** `src/ingestion/`, `src/pipeline/run_batch.py`, `Dockerfile.python`
+
+The batch job runs in a small Python container (Compose profile `pipeline`), same idea as dbt: no local virtualenv required. Airflow starts that image with `docker run` on the shared Docker network.
 
 ### Products (real-ish API)
 
@@ -150,11 +152,11 @@ Results land in schema **`analytics`**. dbt also runs **tests** (not null, uniqu
 
 **Where:** `airflow/dags/ecommerce_pipeline.py`
 
-Airflow does not transform the data itself here. It **schedules and watches** the job:
+Airflow does not transform the data itself here. It **schedules and watches** the job by starting sibling containers:
 
-1. Run the Python batch (`run_batch.py`) — ingest / simulate / load into `raw`
-2. Run `dbt run` — rebuild analytics models
-3. Run `dbt test` — verify quality rules
+1. Python pipeline image — ingest / simulate / load into `raw`
+2. dbt image — `dbt run` (rebuild analytics models)
+3. dbt image — `dbt test` (quality rules)
 
 **Why:** One place to see success/failure, retries, and daily cadence instead of remembering manual commands.
 
@@ -178,6 +180,9 @@ The DAG starts **paused** so nothing surprises you until you unpause it in the U
 | `src/ingestion/` | API pull + fake SCD2 data + batch simulation |
 | `src/storage/` | Postgres connection, load, and read helpers |
 | `src/pipeline/` | One entrypoint that seeds/loads a batch |
+| `Dockerfile.python` | Image for the Python batch |
+| `Dockerfile.dbt` | Image for dbt transforms |
+| `Dockerfile.airflow` | Airflow (+ Docker CLI to run sibling images) |
 | `sql/` | Database bootstrap scripts |
 | `dbt/` | Transformation project (staging → marts) |
 | `airflow/` | Orchestration (DAGs, logs, config) |

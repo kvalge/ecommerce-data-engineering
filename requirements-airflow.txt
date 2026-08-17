@@ -1,7 +1,0 @@
-# Extra packages for Airflow workers running the ecommerce ingest/load task.
-# Do not pin SQLAlchemy here — Airflow already provides it.
-# dbt runs in a separate container (see DAG), not inside this image.
-requests>=2.32.4
-faker==40.35.0
-psycopg2-binary==2.9.12
-python-dotenv==1.2.2

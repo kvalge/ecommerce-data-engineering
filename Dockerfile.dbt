@@ -1,0 +1,8 @@
+FROM ghcr.io/dbt-labs/dbt-postgres:1.8.2
+
+WORKDIR /usr/app
+
+# Project is bind-mounted at runtime (see docker-compose `dbt` service).
+ENV DBT_PROFILES_DIR=/usr/app
+
+ENTRYPOINT ["dbt"]

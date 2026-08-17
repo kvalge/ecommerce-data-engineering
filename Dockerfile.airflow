@@ -1,7 +1,7 @@
 FROM apache/airflow:3.3.1
 
 USER root
-# Static Docker CLI so DAG tasks can `docker run` the dbt image via the mounted socket.
+# Static Docker CLI so DAG tasks can `docker run` pipeline + dbt images via the mounted socket.
 RUN curl -fsSL https://download.docker.com/linux/static/stable/x86_64/docker-27.5.1.tgz \
     | tar -xz -C /tmp \
     && mv /tmp/docker/docker /usr/local/bin/docker \
@@ -9,5 +9,3 @@ RUN curl -fsSL https://download.docker.com/linux/static/stable/x86_64/docker-27.
     && chmod +x /usr/local/bin/docker
 
 USER airflow
-COPY requirements-airflow.txt /requirements-airflow.txt
-RUN pip install --no-cache-dir -r /requirements-airflow.txt

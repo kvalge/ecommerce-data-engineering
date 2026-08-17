@@ -58,7 +58,10 @@ Staging views (from `raw.*`) land in schema `analytics`: `stg_products`, `stg_us
 
 ```bash
 docker compose --profile dbt run --rm dbt test --select staging
+docker compose --profile dbt run --rm dbt build --select marts
 ```
+
+Mart tables in `analytics`: `dim_products`, `dim_users`, `fct_orders`, `fct_order_items`.
 
 ## Data
 Ingests products from the FakeStore API (`src/ingestion/products.py`).

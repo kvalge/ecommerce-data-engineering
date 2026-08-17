@@ -20,5 +20,25 @@ services:
       timeout: 5s
       retries: 5
 
+  dbt:
+    image: ghcr.io/dbt-labs/dbt-postgres:1.8.2
+    container_name: ecommerce_dbt
+    working_dir: /usr/app
+    volumes:
+      - ./dbt:/usr/app
+    env_file:
+      - .env
+    environment:
+      DBT_PROFILES_DIR: /usr/app
+      # Reach Postgres on the Compose network (not localhost / host port)
+      DBT_HOST: postgres
+      DBT_PORT: "5432"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    profiles:
+      - dbt
+    entrypoint: ["dbt"]
+
 volumes:
   postgres_data:

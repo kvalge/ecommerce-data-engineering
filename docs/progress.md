@@ -18,10 +18,12 @@ Build an end-to-end e-commerce data pipeline: ingest products from an external A
 - Load functions (`src/storage/load.py`): `upsert_products` by `id`; `load_users` / `load_orders` / `load_order_items` close via `valid_until` then append new versions (re-run safe).
 - Read helpers (`src/storage/read.py`): fetch raw tables and `is_seeded()`.
 - Pipeline runner (`src/pipeline/run_batch.py`): upsert products; seed once if empty; otherwise load DB state → `simulate_batch` → persist.
+- Manual verification: ran `run_batch` three times; current vs historical rows (`valid_until`) look correct.
+- dbt via Docker: project in `dbt/` (`dbt_project.yml`, `profiles.yml`); Compose service `dbt` (`ghcr.io/dbt-labs/dbt-postgres:1.8.2`) connects to `postgres` on the Docker network; `dbt debug` OK.
 
 ## Next steps
 
-Immediate next step: **6**.
+Immediate next step: **8**.
 
 ### PostgreSQL raw storage
 
@@ -30,11 +32,11 @@ Immediate next step: **6**.
 3. ~~Add `src/storage/` with a DB connection helper (SQLAlchemy + psycopg2).~~
 4. ~~Implement load functions: upsert products by `id`; for users/orders/order_items append new versions and close current rows via `valid_until` only.~~
 5. ~~Wire a batch run to persist to Postgres (seed once, then `simulate_batch` writes to the DB).~~
-6. Manually verify after two runs: current rows (`valid_until IS NULL`) vs historical versions look correct.
+6. ~~Manually verify after two runs: current rows (`valid_until IS NULL`) vs historical versions look correct.~~
 
 ### dbt transformation
 
-7. Initialize a dbt project and profile pointed at the same Postgres database.
+7. ~~Initialize a dbt project and profile pointed at the same Postgres database.~~
 8. Add staging models and sources for the four raw tables.
 9. Add tests (`not_null`, `unique`, relationships) and enforce one current row per `entity_id` where applicable.
 10. Build marts: dimension tables (`dim_users`, `dim_products`) and fact tables (`fct_orders` / `fct_order_items`) with as-of SCD2 joins.

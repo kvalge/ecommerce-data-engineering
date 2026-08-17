@@ -42,6 +42,17 @@ python src/pipeline/run_batch.py
 
 First run seeds when `raw.users` is empty; later runs load state from the DB, apply `simulate_batch`, and write closes/inserts.
 
+### dbt (Docker)
+
+dbt runs in Compose (no local `pip install dbt` needed). Project files live in `dbt/`; the container talks to Postgres as host `postgres` on port `5432` (Docker network).
+
+```bash
+docker compose up -d postgres
+docker compose --profile dbt run --rm dbt debug
+docker compose --profile dbt run --rm dbt run
+docker compose --profile dbt run --rm dbt test
+```
+
 ## Data
 Ingests products from the FakeStore API (`src/ingestion/products.py`).
 

@@ -6,45 +6,124 @@ models:
     columns:
       - name: product_id
         description: Product id from the external API.
+        data_tests:
+          - not_null
+          - unique
       - name: product_name
         description: Product title.
+        data_tests:
+          - not_null
       - name: unit_price
         description: Catalog price.
+        data_tests:
+          - not_null
 
   - name: stg_users
     description: All user versions from raw.users (SCD2), with is_current flag.
     columns:
       - name: user_version_id
         description: Surrogate key for this version row.
+        data_tests:
+          - not_null
+          - unique
       - name: user_id
         description: Stable user entity_id.
+        data_tests:
+          - not_null
+          # At most one open version per entity
+          - unique:
+              config:
+                where: "is_current"
+      - name: email
+        data_tests:
+          - not_null
+      - name: valid_from
+        data_tests:
+          - not_null
       - name: is_current
         description: True when valid_until is null.
+        data_tests:
+          - not_null
 
   - name: stg_orders
     description: All order versions from raw.orders (SCD2), with is_current flag.
     columns:
       - name: order_version_id
         description: Surrogate key for this version row.
+        data_tests:
+          - not_null
+          - unique
       - name: order_id
         description: Stable order entity_id.
+        data_tests:
+          - not_null
+          - unique:
+              config:
+                where: "is_current"
       - name: user_id
         description: User entity_id who placed the order.
+        data_tests:
+          - not_null
+          - relationships:
+              to: ref('stg_users')
+              field: user_id
+      - name: order_date
+        data_tests:
+          - not_null
+      - name: order_status
+        data_tests:
+          - not_null
+      - name: valid_from
+        data_tests:
+          - not_null
       - name: is_current
         description: True when valid_until is null.
+        data_tests:
+          - not_null
 
   - name: stg_order_items
     description: All order_item versions from raw.order_items (SCD2), with is_current flag.
     columns:
       - name: order_item_version_id
         description: Surrogate key for this version row.
+        data_tests:
+          - not_null
+          - unique
       - name: order_item_id
         description: Stable order_item entity_id.
+        data_tests:
+          - not_null
+          - unique:
+              config:
+                where: "is_current"
       - name: order_id
         description: Parent order entity_id.
+        data_tests:
+          - not_null
+          - relationships:
+              to: ref('stg_orders')
+              field: order_id
       - name: product_id
         description: Product id.
+        data_tests:
+          - not_null
+          - relationships:
+              to: ref('stg_products')
+              field: product_id
+      - name: quantity
+        data_tests:
+          - not_null
+      - name: unit_price
+        data_tests:
+          - not_null
       - name: line_total
         description: quantity * unit_price.
+        data_tests:
+          - not_null
+      - name: valid_from
+        data_tests:
+          - not_null
       - name: is_current
         description: True when valid_until is null.
+        data_tests:
+          - not_null

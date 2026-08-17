@@ -56,6 +56,10 @@ docker compose --profile dbt run --rm dbt test
 
 Staging views (from `raw.*`) land in schema `analytics`: `stg_products`, `stg_users`, `stg_orders`, `stg_order_items`.
 
+```bash
+docker compose --profile dbt run --rm dbt test --select staging
+```
+
 ## Data
 Ingests products from the FakeStore API (`src/ingestion/products.py`).
 
